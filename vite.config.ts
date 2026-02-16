@@ -8,6 +8,10 @@ export default defineConfig({
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || ''),
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
   },
+  server: {
+    port: 5173, // Cố định cổng để tránh lỗi redirect
+    strictPort: true,
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
