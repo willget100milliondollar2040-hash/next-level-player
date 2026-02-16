@@ -4,6 +4,7 @@ import { UserProfile, TrainingSession, ChatMessage, Exercise, UserStats } from '
 import PlayerRadar from './RadarChart';
 import PerformanceTrends from './PerformanceTrends';
 import { generatePersonalizedPlan, getCoachChatResponse } from '../services/gemini';
+import { supabase } from '../services/supabase';
 
 interface Props {
   profile: UserProfile;
@@ -276,6 +277,10 @@ const Dashboard: React.FC<Props> = ({ profile, onUpdateProfile }) => {
     onUpdateProfile({ ...profile, currentSessions: updatedSessions });
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   const isWeekComplete = sessions.length > 0 && sessions.every(s => s.completed);
 
   return (
@@ -310,27 +315,33 @@ const Dashboard: React.FC<Props> = ({ profile, onUpdateProfile }) => {
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-brand-neon rounded-2xl flex items-center justify-center text-black font-black text-xl italic shadow-xl shadow-brand-neon/20">NL</div>
-              <p className="text-white/40 font-black uppercase tracking-[0.4em] text-[10px]">Elite Player Portal v2.5</p>
+              <p className="text-white/40 font-black uppercase tracking-[0.4em] text-[10px]">Elite Player Portal v3.0</p>
             </div>
             <h1 className="text-7xl font-black italic uppercase tracking-tighter leading-none text-white">
               {profile.name.split(' ')[0]} <span className="text-brand-neon">ACADEMY.</span>
             </h1>
           </div>
-          <div className="flex items-center gap-10 bg-brand-accent/40 backdrop-blur-xl p-8 rounded-[3rem] border border-white/5">
-            <div className="text-center">
-              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Overall</p>
-              <p className="text-5xl font-black italic text-brand-neon tracking-tighter">{overallRating}</p>
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6">
+            <div className="flex items-center gap-8 bg-brand-accent/40 backdrop-blur-xl p-8 rounded-[3rem] border border-white/5">
+              <div className="text-center">
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Overall</p>
+                <p className="text-5xl font-black italic text-brand-neon tracking-tighter">{overallRating}</p>
+              </div>
+              <div className="h-12 w-[1px] bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Academy LVL</p>
+                <p className="text-5xl font-black italic text-white tracking-tighter">{profile.level || 1}</p>
+              </div>
+              <div className="h-12 w-[1px] bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Streak</p>
+                <p className="text-5xl font-black italic text-white tracking-tighter">{profile.streak || 0}d</p>
+              </div>
             </div>
-            <div className="h-12 w-[1px] bg-white/10"></div>
-            <div className="text-center">
-              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Academy LVL</p>
-              <p className="text-5xl font-black italic text-white tracking-tighter">{profile.level || 1}</p>
-            </div>
-            <div className="h-12 w-[1px] bg-white/10"></div>
-            <div className="text-center">
-              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Streak</p>
-              <p className="text-5xl font-black italic text-white tracking-tighter">{profile.streak || 0}d</p>
-            </div>
+            <button onClick={handleLogout} className="group p-4 bg-white/5 border border-white/10 rounded-3xl hover:bg-red-500/10 hover:border-red-500/50 transition-all flex items-center justify-center gap-2">
+              <svg className="w-5 h-5 text-white/40 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+              <span className="text-[9px] font-black uppercase text-white/40 group-hover:text-red-500 transition-colors tracking-widest">Logout</span>
+            </button>
           </div>
         </header>
 
