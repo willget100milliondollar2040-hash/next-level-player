@@ -2,13 +2,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { UserProfile, TrainingSession, AssessmentResults, ChatMessage, UserStats } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lấy API Key an toàn
+const getApiKey = () => {
+  const key = process.env.API_KEY;
+  if (!key || key === "undefined") return "";
+  return key;
+};
 
-const withRetry = async <T>(fn: () => Promise<T>, maxRetries = 2, delay = 500): Promise<T> => {
+const withRetry = async <T>(fn: (ai: any) => Promise<T>, maxRetries = 2, delay = 500): Promise<T> => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API_KEY_MISSING: Hãy vào Vercel Settings -> Environment Variables để thêm API_KEY.");
+  }
+  
+  const ai = new GoogleGenAI({ apiKey });
   let lastError: any;
+  
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await fn();
+      return await fn(ai);
     } catch (error: any) {
       lastError = error;
       if (error?.message?.includes('429') || error?.status === 429) {
@@ -22,7 +34,7 @@ const withRetry = async <T>(fn: () => Promise<T>, maxRetries = 2, delay = 500): 
 };
 
 export const analyzeAssessment = async (profile: Partial<UserProfile>, results: AssessmentResults) => {
-  return withRetry(async () => {
+  return withRetry(async (ai) => {
     const prompt = `Phân tích cầu thủ ${profile.age}t, vị trí ${profile.position}. 
     Kết quả: 100m ${results.sprint100m}s, Tâng bóng ${results.juggling}, Rê bóng ${results.dribbling}s, Plank ${results.plank}s. 
     Điểm yếu: ${profile.weaknesses}. 
@@ -68,20 +80,9 @@ export interface PlanResult {
 export const generatePersonalizedPlan = async (profile: UserProfile, feedback?: string): Promise<PlanResult> => {
   const timePerSession = Math.round((profile.hoursPerWeek * 60) / profile.sessionsPerWeek);
   
-  return withRetry(async () => {
-    const prompt = `Bạn là HLV NextLevel Academy cao cấp. 
-    Tạo giáo án Tuần ${profile.currentWeek} cho cầu thủ ${profile.name} (${profile.position}).
-    
-    YÊU CẦU BẮT BUỘC:
-    1. Tạo đúng và đủ ${profile.sessionsPerWeek} buổi tập (sessions).
-    2. Mỗi buổi tập phải kéo dài khoảng ${timePerSession} phút.
-    3. Nội dung tập trung vào: ${profile.weaknesses}.
-    4. Cấu trúc mỗi buổi: Khởi động, Tập chính, Tập bổ trợ, Thể lực.
-    
-    Stats hiện tại: ${JSON.stringify(profile.stats)}.
-    Feedback tuần trước: "${feedback || 'Không có'}".
-    
-    Trả về JSON định dạng PlanResult. Tiếng Việt chuyên nghiệp.`;
+  return withRetry(async (ai) => {
+    const prompt = ` HLB NextLevel Academy. Tạo giáo án Tuần ${profile.currentWeek} cho ${profile.name} (${profile.position}).
+    Yêu cầu: ${profile.sessionsPerWeek} buổi, ${timePerSession} phút/buổi. Tập trung: ${profile.weaknesses}. Trả JSON.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -144,17 +145,15 @@ export const generatePersonalizedPlan = async (profile: UserProfile, feedback?: 
       sessions: result.sessions.slice(0, profile.sessionsPerWeek).map((s: any) => ({ 
         ...s, 
         completed: false,
-        duration: timePerSession // Đảm bảo thời lượng hiển thị đúng
+        duration: timePerSession 
       }))
     };
   });
 };
 
 export const getCoachChatResponse = async (profile: UserProfile, history: ChatMessage[], message: string) => {
-  return withRetry(async () => {
-    const systemInstruction = `Bạn là Coach NextLevel. Trả lời cực kỳ ngắn gọn, chuyên nghiệp về bóng đá. 
-    Bạn biết rằng cầu thủ này tập ${profile.sessionsPerWeek} buổi/tuần, mỗi buổi ${Math.round((profile.hoursPerWeek * 60) / profile.sessionsPerWeek)} phút.`;
-    
+  return withRetry(async (ai) => {
+    const systemInstruction = `Bạn là Coach NextLevel. Trả lời cực kỳ ngắn gọn, chuyên nghiệp về bóng đá.`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: message,
